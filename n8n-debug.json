@@ -1,0 +1,27 @@
+{
+  "name": "Send WhatsApp Reply",
+  "type": "n8n-nodes-base.httpRequest",
+  "typeVersion": 4,
+  "position": [1400, 300],
+  "parameters": {
+    "method": "POST",
+    "url": "https://api.ycloud.com/v2/whatsapp/messages/send",
+    "sendHeaders": true,
+    "headerParameters": {
+      "parameters": [
+        {
+          "name": "Authorization",
+          "value": "Bearer TU_API_KEY_DE_YCLOUD"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    "sendBody": true,
+    "contentType": "json",
+    "jsonParameters": true,
+    "bodyParametersJson": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"={{ $('Extract Message').item.json.sender }}\",\n  \"from\": \"TU_NUMERO_YCLOUD\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"={{ $('AI Agent').item.json.output }}\"\n  }\n}"
+  }
+}

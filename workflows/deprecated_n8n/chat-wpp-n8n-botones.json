@@ -1,0 +1,518 @@
+{
+  "name": "WhatsApp AI Booking Agent (Compatible v1)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7d4da544-2bc0-4a68-ba29-418640589ff0",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        784
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nSIPvo9ZLdGkvcdv",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Checks slots. Input: JSON { \"date\": \"YYYY-MM-DD\", \"professional\": \"NombreExacto\" }",
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/get_available_slots",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_date\": \"{{ $json.date }}\", \"p_professional_name\": \"{{ $json.professional }}\" }",
+        "options": {}
+      },
+      "id": "512791ee-036b-49df-a229-4a37200bbb75",
+      "name": "checkAvailability",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1952,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Books appointment. Input: JSON { \"name\": \"Cliente\", \"date\": \"YYYY-MM-DD\", \"time\": \"HH:MM:SS\", \"professional\": \"NombreExacto\" }",
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/book_appointment_by_name",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "= { \"p_customer_name\": \"{{ $json.name }}\", \"p_customer_phone\": \"{{ $json.phone }}\", \"p_date\": \"{{ $json.date }}\", \"p_time\": \"{{ $json.time }}\", \"p_professional_name\": \"{{ $json.professional }}\" }",
+        "options": {}
+      },
+      "id": "a585449b-b663-4767-bd98-409f14a1496d",
+      "name": "bookAppointment",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1824,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-ai-incoming",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        288,
+        496
+      ],
+      "id": "d137ca91-a8d4-4005-ae5f-19defec24abd",
+      "webhookId": "32d8fa6c-f071-4bd0-8ba6-50ea90b9187b"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\n\nlet sender = body?.whatsappInboundMessage?.from || body?.from || '';\n// Text\nlet message = body?.whatsappInboundMessage?.text?.body || body?.text?.body;\n\n// Interactive (List/Button response)\nif (!message && body?.whatsappInboundMessage?.interactive) {\n  const interact = body.whatsappInboundMessage.interactive;\n  message = interact.list_reply?.title || interact.button_reply?.title || interact.list_reply?.id || interact.button_reply?.id;\n}\n\n// Fallback\nmessage = message || 'Hola';\nlet name = body?.whatsappInboundMessage?.customerProfile?.name || 'Cliente';\n\nreturn {\n  sender: String(sender).trim(),\n  message: String(message).trim(),\n  name: String(name).trim(),\n  shop_slug: 'demo'\n};"
+      },
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        496
+      ],
+      "id": "4a2ecea7-8980-468b-8c80-82e3b0522f8f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message.toLowerCase();\nconst now = new Date();\nconst pad = n => String(n).padStart(2,'0');\nconst iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;\n\nlet parsed_date = null;\n\nif (msg.includes('mañana')) parsed_date = iso(new Date(now.setDate(now.getDate()+1)));\n\nconst m1 = msg.match(/\\b(el|para)\\s+(\\d{1,2})\\b/);\nif (!parsed_date && m1) {\n  const d = new Date();\n  d.setDate(Number(m1[2]));\n  if (d < new Date()) d.setMonth(d.getMonth()+1);\n  parsed_date = iso(d);\n}\n\nreturn { ...$json, parsed_date };"
+      },
+      "name": "Parse Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        496
+      ],
+      "id": "dfe2addd-7ad9-4f2f-9587-833844ce786a"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/get_shop_context",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_slug\": \"={{ $json.shop_slug }}\",\n  \"p_phone\": \"={{ $json.sender }}\"\n}",
+        "options": {}
+      },
+      "name": "Get Shop Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        896,
+        496
+      ],
+      "id": "4dbaaa17-eb12-4860-a849-5286bc0bb1cc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = Array.isArray($json) ? $json[0] : $json;\nconst split = x => x ? x.split(',').map(s=>s.trim()) : [];\n\nreturn {\n  shop_name: ctx.shop_name,\n  services: split(ctx.services),\n  professionals: split(ctx.professionals),\n  history: ctx.history || ''\n};"
+      },
+      "name": "Normalize Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        496
+      ],
+      "id": "ed29c36d-6c50-46bf-81e6-c49b06fe58b3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/get_or_create_session",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_phone\": \"={{ $('Extract Message').item.json.sender }}\"\n}\n",
+        "options": {}
+      },
+      "name": "Get Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1296,
+        496
+      ],
+      "id": "b97c8549-cf76-433f-86df-0193ffca9d6a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = Array.isArray($json) ? $json[0] : $json;\nreturn {\n  phone: s.phone,\n  service: s.service,\n  professional: s.professional,\n  preferred_date: s.preferred_date,\n  preferred_time: s.preferred_time\n};"
+      },
+      "name": "Normalize Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        496
+      ],
+      "id": "4a8d27d8-3fb6-4f73-a7fd-93e76567df84"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lee datos de otros nodos de forma segura (esto sí funciona en Code node)\nconst msg = String($items(\"Extract Message\")[0]?.json?.message ?? \"\").toLowerCase();\nconst sender = String($items(\"Extract Message\")[0]?.json?.sender ?? \"\").trim();\n\nconst ctx = $items(\"Normalize Context\")[0]?.json ?? {};\nconst session = $items(\"Normalize Session\")[0]?.json ?? {};\n\n// servicios/profesionales pueden venir como array o string\nconst services = Array.isArray(ctx.services)\n  ? ctx.services\n  : String(ctx.services ?? \"\").split(\",\").map(s => s.trim()).filter(Boolean);\n\nconst professionals = Array.isArray(ctx.professionals)\n  ? ctx.professionals\n  : String(ctx.professionals ?? \"\").split(\",\").map(s => s.trim()).filter(Boolean);\n\n// Detectar servicio por \"contiene\"\nlet service = null;\nfor (const s of services) {\n  const sKey = s.toLowerCase().split(\"(\")[0].trim(); // \"Barba y Perfilado\"\n  if (sKey && msg.includes(sKey)) {\n    service = sKey; \n    break;\n  }\n}\n\n// Detectar profesional por nombre completo o primer nombre\nlet professional = null;\nfor (const p of professionals) {\n  const pLower = p.toLowerCase();\n  const first = pLower.split(\" \")[0]; // joaquin, maria\n  if ((pLower && msg.includes(pLower)) || (first && msg.includes(first))) {\n    professional = p;\n    break;\n  }\n}\n\n// Fecha parseada desde tu nodo Parse Date (si existe)\nconst parsedDate = $items(\"Parse Date\")[0]?.json?.parsed_date ?? null;\n\n// Detectar Hora (Nuevo)\nlet extractedTime = null;\n// Matches: \"10:30\", \"10:00\", \"9:00\", \"09:00\"\nconst timeMatch1 = msg.match(/\\b(\\d{1,2}):(\\d{2})\\b/);\nif (timeMatch1) {\n  extractedTime = `${timeMatch1[1].padStart(2, '0')}:${timeMatch1[2]}:00`;\n} else {\n  // Matches: \"a las 9\", \"a las 10\"\n  const timeMatch2 = msg.match(/\\ba\\s+las?\\s+(\\d{1,2})\\b/);\n  if (timeMatch2) {\n    extractedTime = `${timeMatch2[1].padStart(2, '0')}:00:00`;\n  }\n}\n\n// Merge: NO pises con null lo que ya tenías en sesión\nreturn {\n  phone: sender || session.phone || null,\n  service: service || session.service || null,\n  professional: professional || session.professional || null,\n  preferred_date: parsedDate || session.preferred_date || null,\n  preferred_time: extractedTime || session.preferred_time || null,\n};\n"
+      },
+      "name": "Extract Session Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        650
+      ],
+      "id": "d35f101f-0f92-473e-802d-6a9185fcc43a"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/update_session",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55b29kdmRscnJrZ2liamJ4bWdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4NzUzODEsImV4cCI6MjA4NDQ1MTM4MX0.N6IzR5cQYVMI9980wi7-yiUR3G4fQntuFiik4mXkFSY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "p_phone",
+              "value": "={{$json.phone}}"
+            },
+            {
+              "name": "p_service",
+              "value": "={{$json.service}}"
+            },
+            {
+              "name": "p_professional",
+              "value": "={{$json.professional}}"
+            },
+            {
+              "name": "p_preferred_date",
+              "value": "={{$json.preferred_date}}"
+            },
+            {
+              "name": "p_preferred_time",
+              "value": "={{$json.preferred_time}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Update Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1680,
+        650
+      ],
+      "id": "fc79a9a2-3427-4dba-b14f-3234865f0b11"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Extract Message').item.json.message }}\n\n--- SESSION STATE (READ ONLY) ---\nService: {{ $json.service }}\nProfessional: {{ $json.professional }}\nDate: {{ $json.preferred_date }}\nTime: {{ $json.preferred_time }}\nPhone: {{ $json.phone }}\nName: {{ $('Extract Message').item.json.name }}\n\n--- SHOP CONTEXT ---\n{{ \n\"Shop: \" + $node[\"Normalize Context\"].json.shop_name + \n\"\\nServicios: \" + ($node[\"Normalize Context\"].json.services || []).join(\", \") + \n\"\\nProfesionales: \" + ($node[\"Normalize Context\"].json.professionals || []).join(\", \") \n}}\n",
+        "options": {
+          "systemMessage": "Sos un asistente de turnos para una peluquería (Shop: {{ $node[\"Normalize Context\"].json.shop_name }}).\n\nTU OBJETIVO: 1) Completar datos. 2) Buscar horarios. 3) AGENDAR el turno.\n\nREGLAS DE INTERACCIÓN (USA LISTAS):\n- SI TENES QUE PREGUNTAR EL SERVICIO:\n  Respondé: ##LISTA## { \"title\": \"Nuestros Servicios\", \"rows\": [\"Corte\", \"Barba\", ...] } \n  (Usa la lista de 'Servicios' del Contexto. Solo si hay mas de 1 opción)\n- SI TENES QUE PREGUNTAR EL PROFESIONAL:\n  Respondé: ##LISTA## { \"title\": \"Nuestros Profesionales\", \"rows\": [\"Joaquin\", \"Maria\", ...] } \n  (Usa la lista de 'Profesionales' del Contexto)\n\nREGLAS DE FLUJO:\n1) Lee el 'SESSION STATE'. Si un campo YA tiene valor, NO lo preguntes.\n2) Si falta Service/Professional/Date, pregunta SOLO lo que falta.\n3) CUANDO TENGAS Service+Professional+Date: USA 'checkAvailability'.\n   - SI ENCONTRAS HORARIOS: Respondé: \n     ##LISTA## { \"title\": \"Horarios Disponibles\", \"rows\": [\"09:00\", \"10:15\", ...] }\n4) CUANDO EL CLIENTE ELIJA UN HORARIO: USA 'bookAppointment'.\n   - Input 'name': Usa el nombre del 'SESSION STATE' o 'Cliente'.\n   - AL CONFIRMAR RESERVA EXITO: Usa EXACTAMENTE este formato:\n     ✅ *¡Reserva Confirmada!*\n\n     💇‍♂️ *Servicio:* [Servicio]\n     💈 *Profesional:* [Nombre]\n     🗓 *Fecha:* [Fecha] a las [Hora]\n\n     📍 *Lugar:* {{ $node[\"Normalize Context\"].json.shop_name }}\n     ¡Te esperamos!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1900,
+        496
+      ],
+      "id": "98d51805-15df-4df3-bb7b-ecac310ff827",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "d0eafac203bf8fe636a0294232f3930e"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"messaging_product\": \"whatsapp\",\n  \"to\": $('Extract Message').item.json.sender,\n  \"from\": \"5493586548065\",\n  \"type\": $json.type,\n  [$json.type]: $json.interactive || $json.text\n} }}",
+        "options": {}
+      },
+      "id": "89747cba-2394-4736-88b6-38203558d5b5",
+      "name": "Send YCloud Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2150,
+        496
+      ]
+    }
+    ,
+    {
+      "parameters": {
+        "jsCode": "// Input: { output: \"text\" } OR { output: \"##LISTA## { \"title\": \"...\", \"rows\": [...] }\" }\nconst output = $json.output || $json.text || $json.message || '';\nconst marker = '##LISTA##';\n\nif (output.includes(marker)) {\n  try {\n    // Extract JSON\n    const jsonStr = output.split(marker)[1].trim();\n    // Support both simple array (legacy) and object (new)\n    let data = JSON.parse(jsonStr);\n    let title = 'Opciones';\n    let rows = [];\n\n    if (Array.isArray(data)) {\n      // Legacy: Array of strings (Time Slots)\n      title = 'Horarios Disponibles';\n      rows = data;\n    } else {\n      // New: Object { title, rows }\n      title = data.title || 'Opciones';\n      rows = data.rows || [];\n    }\n    \n    // Limits: Max 10 rows for WhatsApp List\n    const listRows = rows.slice(0, 10).map((item, i) => ({\n      id: item,\n      title: item.slice(0, 24),\n      description: ''\n    }));\n\n    return {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        header: {\n          type: 'text',\n          text: title\n        },\n        body: {\n          text: 'Seleccioná una opción:'\n        },\n        footer: {\n          text: 'Asistente Virtual'\n        },\n        action: {\n          button: 'Ver Opciones',\n          sections: [\n            {\n              title: 'Opciones',\n              rows: listRows\n            }\n          ]\n        }\n      }\n    };\n  } catch (e) {\n    return { type: 'text', text: { body: output + ' [Error JSON]' } };\n  }\n}\n\n// Default Text\nreturn { type: 'text', text: { body: output } };"
+      },
+      "id": "format-reply-node",
+      "name": "Format Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100, 
+        560
+      ]
+    }
+  ],
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkAvailability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bookAppointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Parse Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Date": {
+      "main": [
+        [
+          {
+            "node": "Get Shop Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Shop Context": {
+      "main": [
+        [
+          {
+            "node": "Normalize Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Context": {
+      "main": [
+        [
+          {
+            "node": "Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Session": {
+      "main": [
+        [
+          {
+            "node": "Normalize Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Session": {
+      "main": [
+        [
+          {
+            "node": "Extract Session Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Session Update": {
+      "main": [
+        [
+          {
+            "node": "Update Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Session": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Reply": {
+      "main": [
+        [
+          {
+            "node": "Send YCloud Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

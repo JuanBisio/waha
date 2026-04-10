@@ -1,0 +1,69 @@
+services:
+  # Evolution API - Versión simplificada sin base de datos
+  evolution-api:
+    image: atendai/evolution-api:v2.0.10
+    container_name: evolution_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # Server Configuration
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      SERVER_URL: http://localhost:8080
+      
+      # API Configuration
+      AUTHENTICATION_API_KEY: SaaS_Instance_Key_2026_Secure_Token_12345
+      AUTHENTICATION_TYPE: apikey
+      
+      # Database DISABLED (usar archivos locales)
+      DATABASE_PROVIDER: sqlite
+      DATABASE_ENABLED: false
+      DATABASE_SAVE_DATA_INSTANCE: false
+      DATABASE_SAVE_DATA_NEW_MESSAGE: false
+      DATABASE_SAVE_MESSAGE_UPDATE: false
+      DATABASE_SAVE_DATA_CONTACTS: false
+      DATABASE_SAVE_DATA_CHATS: false
+      
+      # Redis DISABLED  
+      REDIS_ENABLED: false
+      
+      # WhatsApp Configuration
+      WEBSOCKET_ENABLED: false
+      WA_BUSINESS_TOKEN_WEBHOOK: evolution
+      
+      # Instance Configuration
+      DEL_INSTANCE: false
+      DEL_TEMP_INSTANCES: false
+      
+      # QR Code Configuration
+      QRCODE_LIMIT: 30
+      QRCODE_COLOR: "#198754"
+      
+      # Log Configuration
+      LOG_LEVEL: DEBUG
+      LOG_COLOR: true
+      
+      # Language
+      LANGUAGE: es
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    networks:
+      - evolution_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  evolution_instances:
+    driver: local
+  evolution_store:
+    driver: local
+
+networks:
+  evolution_network:
+    driver: bridge

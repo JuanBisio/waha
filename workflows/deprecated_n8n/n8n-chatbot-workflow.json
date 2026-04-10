@@ -1,0 +1,253 @@
+{
+  "name": "WhatsApp AI Chatbot - Gemini",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-incoming",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-incoming",
+      "name": "Webhook Incoming",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "whatsapp-incoming-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sender",
+              "name": "sender",
+              "value": "={{ $json.payload.from }}",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "={{ $json.payload.body }}",
+              "type": "string"
+            },
+             {
+              "id": "senderName",
+              "name": "senderName",
+              "value": "={{ $json.payload._data.notifyName || 'Cliente' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-message",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/get_or_create_session",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SUPABASE_ANON_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_phone\": $json.sender } }}",
+        "options": {}
+      },
+      "id": "get-session",
+      "name": "Get/Create Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare history for Gemini\nconst session = $input.item.json;\nconst newMessage = $('Extract Message').item.json.message;\nlet history = session.context || [];\n\n// Add User Message\nhistory.push({ role: 'user', parts: [{ text: newMessage }] });\n\n// Keep only last 10 messages to avoid limits\nif (history.length > 20) {\n  history = history.slice(-20);\n}\n\nreturn {\n  history: history,\n  sender: session.phone || $('Extract Message').item.json.sender\n};"
+      },
+      "id": "prepare-context",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDIqaDJxiYsVELvzjGD_kvejSoA_O4xLns",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"contents\": $json.history,\n  \"systemInstruction\": {\n    \"parts\": [\n      { \"text\": \"Eres un asistente virtual de Peluquería Estilo Demo. Tu objetivo es agendar turnos. Sé amable, breve y usa emojis. Servicios: Corte, Barba, Color. Horarios: 9-18hs. Si el usuario quiere reservar, pide Nombre, Servicio y Hora. Si confirma, di que agendaste (simulado).\" }\n    ]\n  }\n} }}",
+        "options": {}
+      },
+      "id": "gemini-api",
+      "name": "Gemini AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini Response\nconst response = $input.item.json;\nconst aiText = response.candidates[0].content.parts[0].text;\n\n// Get history to update\nconst history = $('Prepare Context').item.json.history;\n\n// Add Model Response\nhistory.push({ role: 'model', parts: [{ text: aiText }] });\n\nreturn {\n  aiText: aiText,\n  history: history,\n  phone: $('Prepare Context').item.json.sender\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/update_session_context",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_SUPABASE_ANON_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_SUPABASE_ANON_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_phone\": $json.phone, \"p_context\": $json.history } }}",
+        "options": {}
+      },
+      "id": "save-session",
+      "name": "Save Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bountiful-celebration-production-082e.up.railway.app/api/sendText",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "SaaS_Instance_Key_2026_Secure_Token_12345"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"session\": \"default\",\n  \"chatId\": \"{{ $json.phone }}\",\n  \"text\": \"{{ $json.aiText }}\"\n}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Incoming": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Get/Create Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get/Create Session": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Gemini AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini AI": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Session": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

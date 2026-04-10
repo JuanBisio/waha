@@ -1,0 +1,10 @@
+# Claude Code internals
+.claude/
+.agent/
+
+# Imágenes sueltas en la raíz
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp

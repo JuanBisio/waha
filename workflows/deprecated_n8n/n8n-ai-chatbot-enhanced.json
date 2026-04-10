@@ -1,0 +1,280 @@
+{
+  "name": "WhatsApp AI Booking Agent (Enhanced v2)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-ai-incoming",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-incoming",
+      "name": "YCloud Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [400, 300],
+      "webhookId": "whatsapp-ai-incoming"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nlet sender = '';\nlet message = '';\n\nif (body.whatsappInboundMessage) {\n  sender = body.whatsappInboundMessage.from || '';\n  message = body.whatsappInboundMessage.text?.body || '';\n} else if (body.from && body.text) {\n  sender = body.from;\n  message = body.text.body || body.text;\n} else {\n  sender = body.from || body.sender || '';\n  message = body.message || body.text || 'Hola';\n}\n\nreturn {\n  sender: sender,\n  message: message\n};"
+      },
+      "id": "extract-data",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "Eres el asistente de la peluquería 'Demo'. TU OBJETIVO: Reservar turnos.\n\nREGLAS:\n1. Si piden horarios, PREGUNTA: \"¿Con qué profesional? (Juan o Maria)\".\n2. Si el usuario no especifica profesional, buscá sin nombre.\n3. Usa 'checkAvailability' enviando el nombre si lo tenés.\n4. Para reservar, usa 'bookAppointment'. NECESITAS: Nombre Cliente, Fecha, Hora y Profesional.\n5. Hoy es: {{ $now.format('yyyy-MM-dd') }}"
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [820, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "gemini-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [820, 500],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nSIPvo9ZLdGkvcdv",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "memory",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [960, 500]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Checks available slots. Input: JSON { \"date\": \"YYYY-MM-DD\", \"professional\": \"Juan\" }",
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/get_available_slots",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"p_date\": \"{{ $json.date }}\", \"p_professional_name\": \"{{ $json.professional }}\" }",
+        "options": {}
+      },
+      "id": "tool-availability",
+      "name": "checkAvailability",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [1100, 500]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Books appointment. Input: JSON { \"name\": \"Juan\", \"date\": \"2026-02-01\", \"time\": \"10:00:00\", \"professional\": \"Juan\" }",
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/book_appointment_by_name",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_KEY"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "= { \"p_customer_name\": \"{{ $json.name }}\", \"p_customer_phone\": \"{{ $json.phone }}\", \"p_date\": \"{{ $json.date }}\", \"p_time\": \"{{ $json.time }}\", \"p_professional_name\": \"{{ $json.professional }}\" }",
+        "options": {}
+      },
+      "id": "tool-booking",
+      "name": "bookAppointment",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [1240, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "d0eafac203bf8fe636a0294232f3930e"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Extract Message').item.json.sender }}\",\n  \"from\": \"5493586548065\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{ $json.output }}\" }\n}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send YCloud Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/chat_history",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "YOUR_SUPABASE_KEY"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SUPABASE_KEY"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=[\n  {\n    \"sender_phone\": \"{{ $('Extract Message').item.json.sender }}\",\n    \"role\": \"user\",\n    \"message\": \"{{ $('Extract Message').item.json.message }}\"\n  },\n  {\n    \"sender_phone\": \"{{ $('Extract Message').item.json.sender }}\",\n    \"role\": \"assistant\",\n    \"message\": \"{{ $('AI Agent').item.json.output }}\"\n  }\n]",
+        "options": {}
+      },
+      "id": "save-history",
+      "name": "Save Chat History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "YCloud Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "checkAvailability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bookAppointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send YCloud Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send YCloud Reply": {
+      "main": [
+        [
+          {
+            "node": "Save Chat History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

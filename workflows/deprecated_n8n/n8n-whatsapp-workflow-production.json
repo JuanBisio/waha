@@ -1,0 +1,140 @@
+{
+  "name": "WhatsApp Official API - Production FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-created",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "appointment-created-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "phone",
+              "name": "phone",
+              "value": "={{ $json.body.customer.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "name",
+              "name": "name",
+              "value": "={{ $json.body.customer.name }}",
+              "type": "string"
+            },
+            {
+              "id": "service",
+              "name": "service",
+              "value": "={{ $json.body.service.name }}",
+              "type": "string"
+            },
+            {
+              "id": "professional",
+              "name": "professional",
+              "value": "={{ $json.body.professional.name }}",
+              "type": "string"
+            },
+            {
+              "id": "datetime",
+              "name": "datetime",
+              "value": "={{ $json.body.appointment.start_time }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-data",
+      "name": "Extract Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "let phone = $input.item.json.phone;\nlet name = $input.item.json.name;\nlet service = $input.item.json.service;\nlet professional = $input.item.json.professional;\nlet datetime = $input.item.json.datetime;\n\n// -- MOCK DATA LOGIC START --\n// If input is missing (testing mode), use Mock Data targeting user's personal number\nif (!phone) {\n  phone = '5493584014857'; // Your verified number for testing\n  name = 'Juan (Test)';\n  service = 'Corte de Pelo (Test)';\n  professional = 'Barbero (Test)';\n  datetime = new Date().toISOString();\n}\n// -- MOCK DATA LOGIC END --\n\nconst cleaningRegex = /[^\\d]/g;\nif (!phone) phone = '';\n\n// Clean phone: remove non-digits\nlet cleanPhone = phone.toString().replace(cleaningRegex, '');\n\n// Remove leading 0 if present\nif (cleanPhone.startsWith('0')) {\n  cleanPhone = cleanPhone.substring(1);\n}\n\n// Ensure 54 prefix if missing\nif (!cleanPhone.startsWith('54')) {\n  cleanPhone = '54' + cleanPhone;\n}\n\n// Ensure NO @c.us suffix\nif (cleanPhone.includes('@')) {\n  cleanPhone = cleanPhone.split('@')[0];\n}\n\nif (cleanPhone.length < 10) {\n  throw new Error(`Teléfono inválido: ${phone}`);\n}\n\nlet formattedDate = '';\nlet formattedTime = '';\n\nif (datetime) {\n  const separator = datetime.includes('T') ? 'T' : ' ';\n  const [datePart, timePart] = datetime.split(separator);\n  if (datePart) {\n    const [year, month, day] = datePart.split('-');\n    formattedDate = `${day}/${month}/${year}`;\n  }\n  if (timePart) {\n    formattedTime = timePart.substring(0, 5);\n  }\n}\n\nreturn {\n  json: {\n    recipient: cleanPhone,\n    p1_name: name || 'Cliente',\n    p2_date: formattedDate,\n    p3_time: formattedTime,\n    p4_service: service || 'Servicio',\n    p5_prof: professional || 'Profesional'\n  }\n};\n"
+      },
+      "id": "format-message",
+      "name": "Format Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "d0eafac203bf8fe636a0294232f3930e"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.recipient }}\",\n  \"from\": \"5493586548065\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"confirmacion_turno\",\n    \"language\": { \"code\": \"es_AR\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": \"{{ $json.p1_name }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.p2_date }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.p3_time }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.p4_service }}\" },\n          { \"type\": \"text\", \"text\": \"{{ $json.p5_prof }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "send-whatsapp-ycloud",
+      "name": "Send WhatsApp - YCloud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp - YCloud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

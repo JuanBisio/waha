@@ -1,0 +1,133 @@
+{
+  "name": "WhatsApp AI Booking Agent (Gemini 2.0)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-ai-incoming",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-incoming",
+      "name": "YCloud Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "whatsapp-ai-incoming"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nlet sender = '';\nlet message = '';\n\nif (body.whatsappInboundMessage) {\n  sender = body.whatsappInboundMessage.from || '';\n  message = body.whatsappInboundMessage.text?.body || '';\n} else if (body.from && body.text) {\n  sender = body.from;\n  message = body.text.body || body.text;\n} else {\n  sender = body.from || body.sender || '';\n  message = body.message || body.text || 'Hola';\n}\n\nreturn {\n  sender: sender,\n  message: message\n};"
+      },
+      "id": "extract-data",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=AIzaSyDIqaDJxiYsVELvzjGD_kvejSoA_O4xLns",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [{ \"text\": \"{{ $json.message }}\" }]\n    }\n  ],\n  \"systemInstruction\": {\n    \"parts\": [\n      {\n        \"text\": \"Eres un asistente virtual de turnos. Tu objetivo es ayudar a los clientes a agendar citas.\\n\\nInstrucciones:\\n1. Sé amable, breve y profesional. Usa emojis con moderación.\\n2. Si el cliente quiere reservar, pregunta: Nombre, Servicio deseado, y Fecha/Hora preferida.\\n3. Los horarios disponibles son de 9:00 a 18:00, de lunes a viernes.\\n4. Si el cliente confirma, responde que el turno fue agendado exitosamente.\\n\\ngemini-2.0-flash es tu modelo.\"\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "gemini-api",
+      "name": "Gemini AI (2.0 Flash)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Gemini response\nconst response = $input.item.json;\nlet aiText = 'Lo siento, hubo un problema. ¿Podés repetir?';\n\ntry {\n  if (response.candidates && response.candidates[0]) {\n    aiText = response.candidates[0].content.parts[0].text;\n  }\n} catch (e) {\n  console.log('Error parsing Gemini response:', e);\n}\n\n// Get sender from previous node\nconst sender = $('Extract Message').item.json.sender;\n\nreturn {\n  aiText: aiText,\n  sender: sender\n};"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "d0eafac203bf8fe636a0294232f3930e"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.sender }}\",\n  \"from\": \"5493586548065\",\n  \"type\": \"text\",\n  \"text\": { \"body\": \"{{ $json.aiText }}\" }\n}",
+        "options": {}
+      },
+      "id": "send-response",
+      "name": "Send YCloud Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "YCloud Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message": {
+      "main": [
+        [
+          {
+            "node": "Gemini AI (2.0 Flash)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini AI (2.0 Flash)": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Send YCloud Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

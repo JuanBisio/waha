@@ -1,0 +1,96 @@
+{
+  "name": "Inbox - Outbound Messages (Dashboard -> YCloud -> DB)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-outbound",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Dashboard Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.body.recipient }}\",\n  \"from\": \"5493586548065\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"{{ $json.body.message }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "ycloud-api",
+      "name": "Send to YCloud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        340
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YCLOUD_CREDENTIALS_ID",
+          "name": "YCloud API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://nyoodvdlrrkgibjbxmgj.supabase.co/rest/v1/rpc/handle_outbound_message",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"p_contact_id\": \"{{ $node['Dashboard Webhook'].json.body.contact_id }}\",\n  \"p_content\": \"{{ $node['Dashboard Webhook'].json.body.message }}\",\n  \"p_y_id\": \"{{ $json.id }}\"\n}",
+        "options": {}
+      },
+      "id": "supabase-rpc",
+      "name": "Log to DB (RPC)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        340
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Dashboard Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send to YCloud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to YCloud": {
+      "main": [
+        [
+          {
+            "node": "Log to DB (RPC)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
