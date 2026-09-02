@@ -1,10 +1,13 @@
+# macOS
+.DS_Store
+
 # Claude Code internals
 .claude/
 .agent/
 
-# Imágenes sueltas en la raíz
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.webp
+# Imágenes sueltas en la raíz (los assets del proyecto van en assets/)
+/*.jpg
+/*.jpeg
+/*.png
+/*.gif
+/*.webp

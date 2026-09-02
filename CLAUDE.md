@@ -11,6 +11,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **IA:** Google Gemini para interpretación de mensajes entrantes
 - **CAPTCHA:** Cloudflare Turnstile en el widget público
 
+## Estructura del repositorio
+
+```
+Gendo/
+├── turnero-saas/          ← Aplicación Next.js (submódulo git, repo propio)
+├── docs/                  ← Documentación (ver docs/README.md para el índice)
+│   ├── setup/             ← Guías de configuración vigentes
+│   ├── planes/            ← Planes de arquitectura y migración
+│   ├── prompts/           ← Prompts de trabajo para agentes
+│   ├── seguridad/         ← Auditorías pendientes
+│   ├── referencia/        ← Especificaciones técnicas
+│   └── deprecated/        ← Docs históricos (Evolution API, WAHA, n8n)
+├── workflows/deprecated_n8n/  ← Workflows JSON de n8n (solo referencia)
+├── assets/                ← Imágenes y recursos estáticos
+└── docker-compose.yml
+```
+
+**Importante:** `turnero-saas/` es un submódulo apuntando a `JuanBisio/Turnero-Saas`. Los cambios en la app se commitean dentro de ese repo, no en la raíz.
+
 ## Comandos
 
 ```bash
@@ -83,7 +102,7 @@ Estado manejado con reducer (`bookingReducer.ts`) y contexto (`BookingProvider.t
 
 Supabase con RLS habilitado. Migraciones en `supabase/migrations/` (68 archivos). Las tablas principales: `shops`, `professionals`, `schedules`, `services`, `appointments`, `exceptions`, `webhook_logs`, `whatsapp_sessions`.
 
-**Atención:** Existe un archivo `errores-seguridad.md` en la raíz con vulnerabilidades RLS críticas identificadas que requieren atención. Algunas políticas RLS fueron deshabilitadas en migración de debug (`9000_disable_rls_debug.sql`) y no se ha confirmado su restauración completa.
+**Atención:** `docs/seguridad/errores-seguridad.md` documenta vulnerabilidades RLS críticas identificadas que requieren atención. Algunas políticas RLS fueron deshabilitadas en migración de debug (`9000_disable_rls_debug.sql`) y no se ha confirmado su restauración completa.
 
 ## Estado del proyecto
 
