@@ -38,6 +38,7 @@ cd turnero-saas
 npm run dev       # Servidor de desarrollo
 npm run build     # Build de producción
 npm run lint      # ESLint
+npm test          # Vitest (tests unitarios en src/**/*.test.ts)
 ```
 
 ## Variables de entorno

@@ -45,6 +45,7 @@
 ## 🔒 Seguridad
 
 - [errores-seguridad.md](seguridad/errores-seguridad.md) — vulnerabilidades RLS detectadas, **pendientes de resolver**
+- [revision-2026-09-02.md](seguridad/revision-2026-09-02.md) — revisión manual (críticos/altos/medios) y seguimiento de las correcciones aplicadas en el commit `fa375f3`
 
 ## 📘 Referencia
 
