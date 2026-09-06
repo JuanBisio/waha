@@ -114,3 +114,9 @@ Supabase con RLS habilitado. Migraciones en `supabase/migrations/` (68 archivos)
 ## Alias de paths
 
 TypeScript usa `@/*` → `./src/*` (configurado en `tsconfig.json`).
+
+## Seguimiento de tareas en Notion
+
+Las tareas pendientes de Turnero se trackean en el Notion personal del usuario: Habit Tracker → base "Tareas" → tablero filtrado por Contexto = "Turnero". Convención: Área = Trabajo, Contexto = relación a esa página, Prioridad (Alta/Media/Baja), Estado (Pendiente/En curso/Hecha/Archivada).
+
+Regla: cada vez que hagas un push o merge en este repo, revisá si ese cambio resuelve alguna tarea pendiente en ese tablero de Notion y marcala como Hecha, avisándome qué tareas se actualizaron y por qué. Esto aplica solo cuando el push/merge lo hacés vos (Claude Code) dentro de una sesión con el conector de Notion disponible — no cubre pushes hechos manualmente fuera de una sesión con vos.
