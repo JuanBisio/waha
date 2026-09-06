@@ -7,8 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Turnero SaaS** — Sistema multi-tenant de reserva de turnos con automatización de WhatsApp.
 
 - **Stack:** Next.js 16 + React 19 + TypeScript + Supabase (PostgreSQL) + Tailwind CSS 4
-- **WhatsApp:** YCloud API (reemplazó Evolution API + n8n)
-- **IA:** Google Gemini para interpretación de mensajes entrantes
+- **WhatsApp:** YCloud API (reemplazó Evolution API + n8n) — solo notificaciones, sin bot conversacional
 - **CAPTCHA:** Cloudflare Turnstile en el widget público
 
 ## Estructura del repositorio
@@ -48,7 +47,6 @@ Ver `turnero-saas/.env.local.example`. Variables requeridas:
 - `YCLOUD_API_KEY` / `YCLOUD_DEFAULT_SENDER` / `YCLOUD_WEBHOOK_SECRET`
 - `WEBHOOK_MASTER_SECRET` / `CANCELLATION_SECRET`
 - `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
-- `GEMINI_API_KEY`
 
 ## Arquitectura
 
@@ -70,9 +68,9 @@ Cada negocio es un `shop` identificado por `shop_slug`. El middleware (`src/midd
 /api/v1/admin/appointments/external    ← HMAC protegido
 /api/v1/admin/webhooks/test
 /api/v1/webhooks/trigger
-/api/v1/whatsapp/inbound               ← Webhook de YCloud (mensajes entrantes)
-/api/v1/whatsapp/inbound/ai            ← Bot IA con máquina de estados
-/api/v1/whatsapp/outbound              ← Envío desde dashboard
+/api/v1/whatsapp/inbound                    ← Webhook de YCloud, single-tenant legacy
+/api/v1/whatsapp/inbound/[shop_slug]        ← Webhook de YCloud, multi-tenant (por shop)
+/api/v1/whatsapp/outbound                   ← Envío desde dashboard
 ```
 
 ### Motor de disponibilidad (`src/lib/availability/`)
@@ -86,14 +84,16 @@ Entrypoint: `getAvailableSlots.ts`
 
 ### WhatsApp con YCloud (`src/lib/whatsapp/`)
 
-Flujo de mensajes entrantes:
-1. `signatureVerifier.ts` — Verifica HMAC-SHA256 del webhook
-2. `sessionManager.ts` — Lee/escribe estado de conversación en Supabase (`whatsapp_sessions`)
-3. `aiInterpreter.ts` — Llama a Gemini para interpretar intención del mensaje
-4. `stateMachine.ts` — Avanza el estado de reserva/cancelación
-5. `ycloudService.ts` / `messageFormatter.ts` — Construye y envía respuesta
+No hay bot conversacional — se sacó (no funcionaba de forma confiable y era mucho lío
+configurar por negocio). El flujo es solo notificaciones salientes:
 
-Estados de sesión (`src/types/whatsapp-session.ts`): `IDLE → AWAITING_SERVICE → AWAITING_PROFESSIONAL → AWAITING_DATE → AWAITING_TIME`
+- `signatureVerifier.ts` — Verifica HMAC-SHA256 del webhook (falla cerrado sin secret)
+- `ycloudService.ts` / `ycloudClient.ts` — Cliente HTTP con reintentos hacia la API de YCloud
+- `notificationService.ts` — Arma y envía la confirmación de turno (template aprobado por Meta)
+
+Los mensajes entrantes (`/api/v1/whatsapp/inbound[/[shop_slug]]`) solo se validan y se
+guardan en el Inbox del dashboard vía `handle_inbound_message` — no generan ninguna
+respuesta automática.
 
 ### Widget de reserva (`src/components/widget/`)
 

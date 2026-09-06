@@ -127,7 +127,6 @@ En YCloud → **Webhooks** → **Create Webhook**:
 | `YCLOUD_API_KEY` | `yc_xxxxxxxxxxxxx` | Sí (fallback global) |
 | `YCLOUD_DEFAULT_SENDER` | `+5493581234567` | Sí (fallback global) |
 | `YCLOUD_WEBHOOK_SECRET` | el secret del paso 4 | Sí (fallback global) |
-| `WHATSAPP_BOT_ENABLED` | `true` | Solo si querés activar el bot conversacional |
 
 > Las variables de Vercel son el **fallback global**. Cada shop puede sobreescribirlas
 > con sus propias credenciales desde el dashboard (ver paso 6).
@@ -153,21 +152,10 @@ Hacer **Redeploy** después de agregar las variables.
 
 ---
 
-## Bot conversacional (opcional)
-
-El bot permite que los clientes reserven, consulten y cancelen turnos directamente desde WhatsApp, sin necesidad de usar el widget.
-
-Para activarlo:
-
-1. Asegurarse de tener `GEMINI_API_KEY` configurada en Vercel (obtener en [aistudio.google.com](https://aistudio.google.com))
-2. Agregar en Vercel: `WHATSAPP_BOT_ENABLED=true`
-3. Hacer Redeploy
-
-Para desactivarlo (el bot no responde nada, solo acusa recibo):
-
-- Eliminar o poner `WHATSAPP_BOT_ENABLED=false` en Vercel y redeploy
-
----
+> **Nota:** hubo un bot conversacional (el cliente reservaba/cancelaba charlando por
+> WhatsApp) que se sacó del todo — no funcionaba de forma confiable y era mucho lío
+> configurar por negocio. Los mensajes entrantes solo quedan guardados en el Inbox del
+> dashboard; el único WhatsApp saliente es la notificación de turno de este flujo.
 
 ## Resumen de variables de entorno
 
@@ -179,8 +167,6 @@ Para desactivarlo (el bot no responde nada, solo acusa recibo):
 | `YCLOUD_API_KEY` | Clave global de YCloud | WhatsApp |
 | `YCLOUD_DEFAULT_SENDER` | Número WhatsApp global del sender | WhatsApp |
 | `YCLOUD_WEBHOOK_SECRET` | Secret global para validar webhooks de YCloud | WhatsApp |
-| `WHATSAPP_BOT_ENABLED` | `true` para activar el bot conversacional | WhatsApp |
-| `GEMINI_API_KEY` | Clave de Google Gemini (requerida por el bot) | WhatsApp bot |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase | Ambos |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anon de Supabase | Ambos |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clave service role de Supabase | Ambos |
